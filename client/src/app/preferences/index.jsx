@@ -29,8 +29,7 @@ export default function PreferencesForm(){
     const onNext = () => {
         // route to home page when user submits form
         if (currPage === preferencesMetadata.length - 1) {
-            return null;
-            // return router.push("../(tabs)/Settings");
+            return router.push("../(tabs)/Settings");
         }
 
         setCurrPage( prev => prev + 1 );
