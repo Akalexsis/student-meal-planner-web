@@ -1,10 +1,19 @@
-import { Text, View } from "react-native";
+import { Link } from "expo-router";
+import { Text } from "react-native";
+import Screen from "../components/Screen";
 
 export default function Index() {
   return (
-    <View className="flex-1 items-center justify-center bg-blue-500">
-      <Text>Home Screen</Text>
-    </View>
+    <Screen >
+      <Text className="text-5xl/[2] text-yellowAccent font-medium tracking-wide">WELCOME</Text>
+      <Text className="text-lg text"> Make meal planning fast, affordable, and stress free! Click the button below
+          to get started.
+      </Text>
+      {/* Directs users to the preferences questionnaire */}
+      <Link className="text text-md hover:text-prmaryOrange"
+        href="/preferences"> 
+        Get Started 
+      </Link>
+    </Screen>
   );
 }
-
