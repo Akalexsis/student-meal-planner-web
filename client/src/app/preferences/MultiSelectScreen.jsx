@@ -16,9 +16,7 @@ export default function MultiselectScreen({id, options}) {
     const [isSelected, setIsSelected] = useState(false);
     const [selectedItems, setSelectedItems] = useState([]);
     const { handlePreferences } = useFormContext();
-
-    console.log(`Options: ${options}`);
-
+    
     const onSelect = (option) => {
         `
             Save selected cuisine when user clicks on that option, otherwise remove from saved 

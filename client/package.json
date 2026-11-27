@@ -1,6 +1,7 @@
 {
   "name": "student-meal-planner",
   "version": "1.0.0",
+  "proxy": "http://localhost:3306",
   "main": "expo-router/entry",
   "dependencies": {
     "@expo/ui": "~58.0.29",

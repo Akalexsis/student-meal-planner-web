@@ -71,59 +71,96 @@ db.connect((err) =>
 // CREATE NEW USER AND STORE PREFERENCES
 // ===========================================================
 // Save all selected user preferences to database
-// function savePreferences(user_id, cuisines) {
-//     ` 
-//         Save all user's preferred meals to the database and fetch them from the API
-//         user_id - integer that uniquely identifies the user
-//         cuisine - array of cuisines the user prefers to see
-//     `
-//     // Save each listed cuisine to preferences table
-//     cuisines.forEach((cuisine) => {
-//         console.log(`Current cuisine: ${cuisine}`);
-//         const insert_cuisine = `INSERT INTO preferences(user_id, cuisine) VALUES(?,?)`;
+function savePreferences(user_id, cuisines) {
+    ` 
+        Save all user's preferred meals to the database for long term storage
+        Cache the preferred meals for faster data access while user on app
+        Function only used when new user creates an account. Separate API function
+        used to update user preferences.
 
-//         db.query(insert_cuisine, [user_id, cuisine,], (err) => {
-//             if (err) return console.log(`There was an error saving your preferred cuisine`);
-//         });
-//     })
-// }
+        user_id - integer that uniquely identifies the user
+        cuisine - array of the user's preferred cuisines (min 3 cuisines, max 5)
+    `
+    console.log(`=== SAVING ${cuisines} FOR USER ${user_id} === `);
+
+    // Cache user cuisines for faster retrieval 
+    cache.set("preferredCuisines", cuisines);
+
+    // Store each listed cuisine in preferences table
+    cuisines.forEach((cuisine) => {
+        const insert_cuisine = `INSERT INTO preferences(user_id, cuisine) VALUES(?,?)`;
+
+        db.query(insert_cuisine, [user_id, cuisine,], (err) => {
+            if (err) return console.log(`There was an error saving your preferred cuisine`);
+
+        });
+    });
+
+    console.log(`=== SUCCESSFULLY SAVED CUISINE PREFERENCES FOR USER ${user_id} ===`);
+}
 
 // ===========================================================
-// QUERIES
+// SAVE USER DATA TO DATABASE
 // ===========================================================
-// app.post("/post-preferences", (req, res) => {
-//     ` Save user preferences to database`
-//     // get all user info
-//     const name = req.body.name;
-//     const budget = req.body.budget;
-//     const cuisines = req.body.cuisine;
+app.post("/create-user", (req, res) => {
+    ` Save user name, budget, and cuisine preferences to database `
+    console.log(`=== CREATING NEW USER ===`);
 
-//     // check if given data has already been cached
-//     console.log(`POSTED DATA: Name - ${name}, Budget - $${budget}, Cuisines - ${cuisines}`);
+    // Parse request to get all user info
+    let name = req.body.name;
+    let budget = req.body.budget;
+    let cuisines = req.body.cuisine;
+    console.log(`Passed values: name - ${name}, budget - ${budget}, cuisines - ${cuisines}`);
 
-//     // check that the name hasn't already been taken
-//     const hasName = `SELECT * FROM users WHERE name=?`;
+    // Check that the name hasn't already been taken
+    const hasName = `SELECT * FROM users WHERE name=?`;
 
-//     db.query(hasName, [name,], (err, result) => {
-//         if (err) {
-//             console.log(" === ERROR LOCATING USER === ");
-//             return res.json({"status": 500, "message": "Error locating provided user"});
-//         }
+    db.query(hasName, [name,], (err, result) => {
+        console.log(`HasName result: ${JSON.stringify(result)}`);
 
-//         if (result[0].name == name) { res.json({"status": 500, "message": "Error: Username already taken"}); }
-//         else {
-//             const insert_user = `INSERT INTO users(name, budget) VALUES(?,?)`;
-//             db.query(insert_user, [name, budget,], (err, result) => {
-//                 if (err) {
-//                     console.log(" === ERROR CREATING NEW USER === ");
-//                     res.json({"status": 500, "message": "Error creating a new user, please try again"});
-//                 }
-//                 else { savePreferences(result[0].id, cuisines); }
-//             })
-//         }
-//     });
+        if (err) {
+            console.log(" === ERROR LOCATING USER === ");
+            return res.json({
+                "status": 404,
+                "body": "Error: Cannot locate provided user"});
+        }
 
-// });
+        // If a result is returned from this query, then name already taken
+        if (result.length > 0) { 
+            return res.json({
+                "status": 401,
+                "body": "Error: Username already taken"
+            }); 
+        }
+        else {
+            const insert_user = `INSERT INTO users(name, budget) VALUES(?,?)`;
+
+            db.query(insert_user, [name, budget,], (err, result) => {
+                console.log(`Insert user result: ${JSON.stringify(result)}`);
+
+                if (err) {
+                    console.log(` === ERROR CREATING NEW USER: ${err} === `);
+                    return res.json({ 
+                        "status": 500,
+                        "body": `Error: Cannot create a new user, ${err}`
+                    });
+                }
+                else { 
+                    console.log(` === SUCCESSFULLY CREATED NEW USER === `);
+                    savePreferences(result.insertId, cuisines); 
+                    
+                    // Store returned user ID in a new user session
+
+                    return res.json({
+                        "status": 200,
+                        "id": result.insertId,
+                        "body": `Successfully created User ${name}`
+                    });
+                }
+            })
+        }
+    });
+});
 
 // ===========================================================
 // API REQUESTS
@@ -131,13 +168,15 @@ db.connect((err) =>
 // Sanitize data from API request
 function parseResponse(meal) {
     `  
-        Extract necessary data from API request and save as an object
+        Extract necessary data from API request and save data for each meal as an object
         where each key specifies the type of data being saved. Key values include:
         name - name of the meal, instructions - meal recipe, ingredients - meal
         ingredients, serving_size - meal serving size, ...
 
         The values are the actual values pulled from the API respone. When parsing the
-        data, the keys come directly from the Tasty API documentation
+        data, the keys come directly from the Tasty API documentation. The new object is then cached.
+        The cache key is the name of the meal being saved and the value is the object containing
+        the parsed API data.
     `
     try {
         console.log(`Current meal: ${meal}`);
@@ -154,11 +193,10 @@ function parseResponse(meal) {
         newMeal["mealImage"] = meal["thumbnail_url"];
         newMeal["mealAltText"] = meal["thumbnail_alt_text"];
 
-        // Add results to newMeal object where key is the name of the results key and value is the variable
         console.log(`Parsed data: ${JSON.stringify(newMeal)}`);
 
-        // Cache parsed data
-        cache.set(cuisine, newMeal);
+        // Cache all necessary data associated with each meal 
+        cache.set(meal, newMeal);
     } catch {
         console.error("There was an error parsing the data");
     }
@@ -228,6 +266,6 @@ app.get("/get-cuisines", (req, res) => {
     
 });
 
-app.listen(8081, () => {
+app.listen(3000, () => {
     console.log("=== WEB SERVER STARTED ===");
 });

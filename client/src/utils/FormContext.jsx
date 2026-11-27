@@ -29,15 +29,38 @@ export function FormContextProvider({children}) {
     `
     const [ preferences, setPreferences ] = useState(initialPreferences);
     const [currPage, setCurrPage] = useState(0);
-    console.log(`Current page from context: ${currPage}`);
 
     // save user preferences based on text input of current question
     const handlePreferences = (id, value) => {
         setPreferences((prev) => ( { ...prev, [id]: value } ))
     }
 
+    const submitPreferences = async() => {
+        try {
+            let response = await fetch("http://localhost:3000/create-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(preferences)
+            });
+            let data = await response.json();
+
+            // Reset form regardless of API result
+            console.log(`User to database response: ${JSON.stringify(data)}`);
+            setCurrPage(0);
+        
+            return data;
+        } catch (error) {
+            console.log(`Error creating new user: ${error}`);
+        } 
+    }
+
     return(
-        <FormContext.Provider value={{ preferences, currPage, setCurrPage, handlePreferences }}>
+        <FormContext.Provider value={{ 
+            preferences, 
+            currPage, 
+            setCurrPage, 
+            handlePreferences,
+            submitPreferences }}>
             {children}
         </FormContext.Provider>
     );

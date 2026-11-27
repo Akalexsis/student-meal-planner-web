@@ -10,12 +10,11 @@ export default function PreferencesForm(){
     `
         Render and save selected user preferences 
 
-        currPage - Context variable that stores index for currently displayed page
-        pages - Object that stores which input type to render along with its associated page identifier (key)
+        currPage - global variable that stores index for currently displayed page
+        pages - Object that stores input type with its associated page identifier (key)
     `
     // stores currently displayed page and implements form navigation
-    const { currPage, setCurrPage }  = useFormContext();
-
+    const { currPage, setCurrPage, submitPreferences }  = useFormContext();
     
     // Render appropriate form input based on selected question. key - form index, value - component to return
     const pages = {
@@ -24,12 +23,19 @@ export default function PreferencesForm(){
         2 : <TextInputScreen id={preferencesMetadata[2]["key"]} inputType={preferencesMetadata[2]["input_type"]}/>,
     }
 
-
-    // handles forward and backwards navigation between questions
-    const onNext = () => {
-        // route to home page when user submits form
+    // Allows users to navigate to next question in form, submits data when on last question
+    const onNext = async () => {
+        // Save data to database and route to home page when user submits form
         if (currPage === preferencesMetadata.length - 1) {
-            return router.push("../(tabs)/Settings");
+            let response = await submitPreferences();
+
+            if (response.status == 200) {
+                return router.replace("../(tabs)/Settings");
+            } else {
+                // TO-DO - MAKE ALERT THAT DISPLAYS ERROR MESSAGE AND RETURNS USER TO PAGE 1 OF FORM
+                console.log(`${response.body}`);
+            }
+            return;
         }
 
         setCurrPage( prev => prev + 1 );
