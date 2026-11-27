@@ -22,7 +22,8 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(session({
     secret: "key", // TO-DO - MAKE KEY IN ENV FILE
-    safeUninitilized: false,
+    resave: false,
+    saveUninitilized: false,
     cookie: { 
         maxAge: 60000 * 60, 
         httpOnly: true, 
@@ -103,16 +104,61 @@ db.connect((err) =>
 // }
 
 // ===========================================================
-// QUERIES
+// AUTHENTICATION AND USER CREATION
 // ===========================================================
 app.get("/", (req, res) => {
     `  
-        Handle user login by checking if user has already logged in.
-        If user already logged in, do nothing. If user not logged in, then create
-        new user session
+        Check if user is already logged in to prevent re-authorizing user
     `
+    let isUser = req.session.userId;
+    console.log(`Session status: ${isUser}`);
+
+    if (isUser) {
+        console.log(`User ${isUser} currently logged in`);
+
+        return res.json({
+            "status": 202,
+            "body": `Session active for user ${isUser}`
+        });
+
+    } else {
+        console.log(`No active session for user ${isUser}`);
+
+        return res.json({
+            "status": 400,
+            "body": `No active session for user ${isUser}. Must login`
+        });
+    }
 
 });
+
+app.post("/login", (req, res) => {
+    ` 
+        Authenticate user by checking if their credentials exist in the database
+    `
+    let username = req.body.name;
+
+    // Locate user using their username and create a new session if valid user
+    const select_user = `SELECT * FROM users WHERE name=?`;
+    db.query(select_user, [username,], (err, result) => {
+        console.log(`FETCH RESULT: ${JSON.stringify(result)}`);
+
+        if (err) {
+            console.log(`=== ERROR LOCATING PROVIDED USER ===`);
+            return res.json({
+                "status": 400,
+                "body": "User not found, please try again"
+            });
+        } 
+        else {
+            // CREATE NEW SESSION FOR USER USING THEIR ID
+            console.log(`=== SUCCESSFULLY LOCATED USER ${username} ===`);
+
+            return res.json({"status": 200});
+        }
+    });
+});
+
 // app.post("/post-preferences", (req, res) => {
 //     ` Save user preferences to database`
 //     // get all user info
