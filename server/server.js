@@ -5,6 +5,9 @@ const express = require("express");
 const cors = require("cors");
 const mysql = require("mysql2");
 const path = require("path");
+
+const session = require("express-session");
+const cookieParser = require("cookie-parser");
 const NodeCache = require("node-cache");
 
 // ===========================================================
@@ -15,6 +18,17 @@ const app = express();
 app.use(express.static(path.join(__dirname, "public")));
 app.use(cors());
 app.use(express.json());
+
+app.use(cookieParser());
+app.use(session({
+    secret: "key", // TO-DO - MAKE KEY IN ENV FILE
+    safeUninitilized: false,
+    cookie: { 
+        maxAge: 60000 * 60, 
+        httpOnly: true, 
+        secure: false 
+    } 
+}));
 const port = 3306;
 
 const pswrd = process.env.PASSWORD;
@@ -91,6 +105,14 @@ db.connect((err) =>
 // ===========================================================
 // QUERIES
 // ===========================================================
+app.get("/", (req, res) => {
+    `  
+        Handle user login by checking if user has already logged in.
+        If user already logged in, do nothing. If user not logged in, then create
+        new user session
+    `
+
+});
 // app.post("/post-preferences", (req, res) => {
 //     ` Save user preferences to database`
 //     // get all user info
@@ -158,7 +180,7 @@ function parseResponse(meal) {
         console.log(`Parsed data: ${JSON.stringify(newMeal)}`);
 
         // Cache parsed data
-        cache.set(cuisine, newMeal);
+        cache.set(meal, newMeal);
     } catch {
         console.error("There was an error parsing the data");
     }
@@ -228,6 +250,6 @@ app.get("/get-cuisines", (req, res) => {
     
 });
 
-app.listen(8081, () => {
+app.listen(3000, () => {
     console.log("=== WEB SERVER STARTED ===");
 });
