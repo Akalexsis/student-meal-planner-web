@@ -23,7 +23,7 @@ app.use(cookieParser());
 app.use(session({
     secret: "key", // TO-DO - MAKE KEY IN ENV FILE
     resave: false,
-    saveUninitilized: false,
+    saveUninitialized: false,
     cookie: { 
         maxAge: 60000 * 60, 
         httpOnly: true, 
@@ -110,23 +110,22 @@ app.get("/", (req, res) => {
     `  
         Check if user is already logged in to prevent re-authorizing user
     `
-    let isUser = req.session.userId;
-    console.log(`Session status: ${isUser}`);
+    console.log(req.session.user);
 
-    if (isUser) {
-        console.log(`User ${isUser} currently logged in`);
-
-        return res.json({
-            "status": 202,
-            "body": `Session active for user ${isUser}`
-        });
-
-    } else {
-        console.log(`No active session for user ${isUser}`);
+    if (!req.session.user) {
+        console.log(`No active session for user`);
 
         return res.json({
             "status": 400,
-            "body": `No active session for user ${isUser}. Must login`
+            "body": `No active session for user. Must login`
+        });
+
+    } else {
+        console.log(`User ${req.session.user.name} currently logged in`);
+
+        return res.json({
+            "status": 202,
+            "body": req.session.user
         });
     }
 
@@ -136,25 +135,36 @@ app.post("/login", (req, res) => {
     ` 
         Authenticate user by checking if their credentials exist in the database
     `
+    // Get and validate user input
     let username = req.body.name;
+    console.log(`PROVIDED USERNAME: ${username}`);
+
+    if (!username) {
+        return res.json({
+            "status": 404,
+            "body": "Please enter your username"
+        });
+    }
 
     // Locate user using their username and create a new session if valid user
     const select_user = `SELECT * FROM users WHERE name=?`;
     db.query(select_user, [username,], (err, result) => {
-        console.log(`FETCH RESULT: ${JSON.stringify(result)}`);
+        console.log(result);
 
         if (err) {
-            console.log(`=== ERROR LOCATING PROVIDED USER ===`);
+            console.log(`=== ERROR LOCATING PROVIDED USER: ${err} ===`);
             return res.json({
                 "status": 400,
                 "body": "User not found, please try again"
             });
         } 
         else {
-            // CREATE NEW SESSION FOR USER USING THEIR ID
+            // Return user data and create new user session
             console.log(`=== SUCCESSFULLY LOCATED USER ${username} ===`);
 
-            return res.json({"status": 200});
+            req.session.user = result[0];
+            req.session.save();
+            return res.json({"status": 200, "body": result});
         }
     });
 });

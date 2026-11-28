@@ -14,7 +14,7 @@ export default function Index() {
       (status == 202), route to dashboard. Else, require user to login or make a new account
     `
     try {
-      let response = await fetch(API_URL);
+      let response = await fetch(`${API_URL}/`);
       let data = await response.json();
 
       console.log(`Response: ${response}, data: ${JSON.stringify(data)}`);
@@ -41,7 +41,7 @@ export default function Index() {
 
       <Link className="m-auto pl-4 pr-4 pt-2 pb-2 mb-2 
                         text-primaryGreen text-lg text-center
-                        bg/100 hover:bg border-2 border-primaryGreen rounded-100"
+                        bg/100 hover:bg hover:font-medium border-2 border-primaryGreen rounded-100"
                         href="/login">
           Login
       </Link>
